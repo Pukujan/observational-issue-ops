@@ -46,8 +46,9 @@ jobs:
           python /tmp/cgm/scripts/validate_content_system.py \
             --root /tmp/cgm \
             --adapter .content-system \
-            --project-root . \
-            --check-adopter-readme
+            --project-root .
+          # CGM 0.5.7 runs the product-only README check automatically when a
+          # README is present; its CLI has no --check-adopter-readme flag.
 
       - name: No committed secrets (tracked tree)
         run: |
