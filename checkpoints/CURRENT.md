@@ -17,7 +17,7 @@ Phase: OIO is building a prepacked observational/operational issue ontology and 
 
 ## Active
 
-- OIO-0005, leaf issue [#18](https://github.com/Pukujan/observational-issue-ops/issues/18), parent [#17](https://github.com/Pukujan/observational-issue-ops/issues/17), dependencies: none. Branch `task/OIO-0005-default-ontology-installer`. OIO-only installer, ontology, adopter boundaries, triage and adoption audit are implemented and locally validated; branch/PR delivery is pending.
+- OIO-0005, leaf issue [#18](https://github.com/Pukujan/observational-issue-ops/issues/18), parent [#17](https://github.com/Pukujan/observational-issue-ops/issues/17), dependencies: none. Branch `task/OIO-0005-default-ontology-installer`; open PR [#19](https://github.com/Pukujan/observational-issue-ops/pull/19). OIO-only installer, ontology, adopter boundaries, triage and adoption audit are implemented; local validation and Sol's read-only review pass, and GitHub `gates` passed on head `341d224dbce98576a3a67f095b73288ec2e849a2`. Awaiting human review and delivery decision.
 
 ## Queued
 
@@ -30,4 +30,4 @@ Phase: OIO is building a prepacked observational/operational issue ontology and 
 
 ## Next atomic action
 
-Commit the OIO-only implementation and synchronized task projections, publish the checkpoint receipt to #18 and parent #17, then open a reviewed PR. All 33 local tests, the disposable adopter check, PCM validation/preflight, CGM 0.5.12 adapter validator, train-manifest checker, YAML and JSON Schema parsing, Python compilation, secret scan, and diff whitespace validation passed on 2026-10-03. The train at `Pukujan/agent-stack-train` is still `status: proposed`; it lists CGM 0.5.12 at `6831f91…` and PCM 0.6.0 at `4e23854…` under `certified`, so record it as proposed train data rather than treating the train itself as final authority.
+Update the task projection and checkpoint receipt to reflect PR #19 and its passing `gates` result, then await human review/delivery direction. All 33 local tests, the disposable adopter check, PCM validation/preflight, CGM 0.5.12 adapter validator, train-manifest checker, YAML and JSON Schema parsing, Python compilation, secret scan, and diff whitespace validation passed on 2026-10-03; Sol reviewed the exact PR head with no remaining concrete blocker. The train at `Pukujan/agent-stack-train` is still `status: proposed`; it lists CGM 0.5.12 at `6831f91…` and PCM 0.6.0 at `4e23854…` under `certified`, so record it as proposed train data rather than treating the train itself as final authority.
