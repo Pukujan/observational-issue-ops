@@ -160,6 +160,29 @@ Blocked/uncertain:
 Next:
 - Publish exact post-merge receipt to leaf #18 and link parent #17; continue governance research on #17.
 
+### 2026-10-03 07:59:08 UTC — Codex
+
+<!-- continuity:checkpoint {"agent":"Codex","blocked":[],"changed":["CURRENT active-task metadata and OIO-0005 task completion projection."],"completed":["Fix continuity metadata for completed OIO-0005 so the shared CI validator accepts the post-merge projection."],"decisions":["Do not leave a completed OIO-0005 projected as active; broader governance work remains on parent #17."],"evidence":["The docs-only PR #20 gate identified the accepted task-status enum and active-task invariant; corrected the status to completed and cleared CURRENT active-task pointers. Local continuity validate now returns VALID."],"next_action":"Verify the updated PR #20 gate and auto-merge, then publish final merge receipts to #18 and #17.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0005","timestamp":"2026-10-03T07:59:08Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"b9284edbb8b566e7e0832a38b5d3c4447a58d63554c2e134b06ff8fce4471922","request_id":"e7d4353268f14d4c875526a8e4255236","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0005"} -->
+
+Completed:
+- Fix continuity metadata for completed OIO-0005 so the shared CI validator accepts the post-merge projection.
+
+Evidence:
+- The docs-only PR #20 gate identified the accepted task-status enum and active-task invariant; corrected the status to completed and cleared CURRENT active-task pointers. Local continuity validate now returns VALID.
+
+Decisions:
+- Do not leave a completed OIO-0005 projected as active; broader governance work remains on parent #17.
+
+Changed:
+- CURRENT active-task metadata and OIO-0005 task completion projection.
+
+Blocked/uncertain:
+- none
+
+Next:
+- Verify the updated PR #20 gate and auto-merge, then publish final merge receipts to #18 and #17.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Verify the live issue before resuming. Checkpoint before stopping.
