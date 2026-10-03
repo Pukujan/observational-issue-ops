@@ -43,6 +43,29 @@ Use deterministic unit and integration tests. Create a disposable local Git repo
 - 2026-10-03: task scoped on leaf issue #18 (parent #17) and branch created. Read-only audit confirmed PCM validation passes but GitHub review/admin enforcement is incomplete; CGM pin was behind the current train proposal and its required filename legend was missing; ACS was reference-only and lacks OIO-side runtime artifacts. Local changes now update CGM to 0.5.12 and add the filename legend, repair PCM worktree guidance, define and package the default ontology, add a fail-closed installer and triage review lanes, and test crash recovery/path confinement. Validation evidence and delivery status will be appended after completion.
 - 2026-10-03: completed the OIO-only implementation and adoption audit. OIO pins PCM 0.6.0 and CGM 0.5.12; PCM continuity/preflight, the pinned CGM adapter validator, and release-train manifest checker pass. ACS HOTLOAD 0.1.0 remains a source reference only because OIO has no runtime assignments/leases/watchdog/claim flow and no passing ACS hotload check. The installer was exercised against a fresh disposable Git repository and its installed `--check` passed. All 33 unit tests pass, including path confinement/recovery, priority/scaffold behavior, and durable body-bound GitHub account attestation, revocation, same-second reapplication and cross-run reuse. YAML, JSON Schemas, Python compilation, secret scan and `git diff --check` pass. No sibling repositories were written. Branch/PR receipt and live delivery gates remain pending.
 
+### 2026-10-03 06:17:06 UTC — Codex
+
+<!-- continuity:checkpoint {"agent":"Codex","blocked":[],"changed":["OIO installer, ontology, schemas, issue workflow/form, governance docs, CGM pin/legend, task/checkpoint, and tests."],"completed":["Built and validated the OIO-only prepacked observational/operational ontology, default 1\u2013100 project priority scaffold, confined adopter installer, issue form, triage, account-bound durable attestation, and PCM/CGM/ACS adoption documentation."],"decisions":["No writes to PCM, ACS, CGM, Octo DB, or adopter repositories. Human-origin queue rank is earned by mapped GitHub account attestation bound to issue event and exact body digest; edited body requires re-attestation."],"evidence":["33 unit tests passed; fresh disposable Git adopter installation and installed --check passed; continuity validate/preflight passed; CGM 0.5.12 adapter validator and stack-train manifest checker passed; YAML/JSON Schema/Python syntax/secret scan/diff checks passed. ACS HOTLOAD remains reference-only, not runtime-ready."],"next_action":"Open reviewed PR for OIO-0005, publish issue receipt and parent progression, then verify CI and review before delivery.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0005","timestamp":"2026-10-03T06:17:06Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"3badffb8caa1b5f75e43c9b213142435bde42939dd02a7948603aa45d7712f13","request_id":"068b6a7527814f70bbae4b135ebff8bf","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0005"} -->
+
+Completed:
+- Built and validated the OIO-only prepacked observational/operational ontology, default 1–100 project priority scaffold, confined adopter installer, issue form, triage, account-bound durable attestation, and PCM/CGM/ACS adoption documentation.
+
+Evidence:
+- 33 unit tests passed; fresh disposable Git adopter installation and installed --check passed; continuity validate/preflight passed; CGM 0.5.12 adapter validator and stack-train manifest checker passed; YAML/JSON Schema/Python syntax/secret scan/diff checks passed. ACS HOTLOAD remains reference-only, not runtime-ready.
+
+Decisions:
+- No writes to PCM, ACS, CGM, Octo DB, or adopter repositories. Human-origin queue rank is earned by mapped GitHub account attestation bound to issue event and exact body digest; edited body requires re-attestation.
+
+Changed:
+- OIO installer, ontology, schemas, issue workflow/form, governance docs, CGM pin/legend, task/checkpoint, and tests.
+
+Blocked/uncertain:
+- none
+
+Next:
+- Open reviewed PR for OIO-0005, publish issue receipt and parent progression, then verify CI and review before delivery.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Verify the live issue before resuming. Checkpoint before stopping.
