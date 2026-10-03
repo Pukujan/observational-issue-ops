@@ -66,6 +66,29 @@ Blocked/uncertain:
 Next:
 - Open reviewed PR for OIO-0005, publish issue receipt and parent progression, then verify CI and review before delivery.
 
+### 2026-10-03 06:20:35 UTC — Codex
+
+<!-- continuity:checkpoint {"agent":"Codex","blocked":[],"changed":["Synchronized CURRENT and OIO-0005 task projections with PR/check/review status."],"completed":["Published OIO-0005 PR #19 and verified its required gates pass at the tested source head; Sol completed a read-only review with no remaining concrete blocker."],"decisions":["Keep PR open for human review/delivery decision; no auto-merge or sibling-repository writes."],"evidence":["PR #19 gates passed at 341d224dbce98576a3a67f095b73288ec2e849a2; independent review by Sol of that exact PR head confirmed the prior authorization, revocation, event-ordering, and cross-run durability findings are resolved. All 33 tests and local validators passed."],"next_action":"Publish this checkpoint receipt to leaf #18 and parent #17, then await human direction on PR delivery.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0005","timestamp":"2026-10-03T06:20:35Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"27030055e6e7217478a0d9e657206480c4ca7fca29abe03eada968bdf97b1a4f","request_id":"ba17b7a4d00f474aab56782f7f6d7319","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0005"} -->
+
+Completed:
+- Published OIO-0005 PR #19 and verified its required gates pass at the tested source head; Sol completed a read-only review with no remaining concrete blocker.
+
+Evidence:
+- PR #19 gates passed at 341d224dbce98576a3a67f095b73288ec2e849a2; independent review by Sol of that exact PR head confirmed the prior authorization, revocation, event-ordering, and cross-run durability findings are resolved. All 33 tests and local validators passed.
+
+Decisions:
+- Keep PR open for human review/delivery decision; no auto-merge or sibling-repository writes.
+
+Changed:
+- Synchronized CURRENT and OIO-0005 task projections with PR/check/review status.
+
+Blocked/uncertain:
+- none
+
+Next:
+- Publish this checkpoint receipt to leaf #18 and parent #17, then await human direction on PR delivery.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Verify the live issue before resuming. Checkpoint before stopping.
