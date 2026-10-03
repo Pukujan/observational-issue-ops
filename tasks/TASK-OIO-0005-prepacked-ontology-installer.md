@@ -137,6 +137,29 @@ Blocked/uncertain:
 Next:
 - Verify the latest PR head's gates and post the exact checkpoint receipt to #18 and parent #17; then await human review/delivery direction.
 
+### 2026-10-03 07:54:33 UTC — Codex
+
+<!-- continuity:checkpoint {"agent":"Codex","blocked":[],"changed":["CURRENT and OIO-0005 task projection reflect merged delivery."],"completed":["Record OIO-0005 as delivered after PR #19 merged and CI gates passed."],"decisions":["Installer is ready for explicitly targeted adopters; ACS HOTLOAD remains reference-only without runtime certification."],"evidence":["PR #19 merged at e965d36b768063a3a8f3c4c5e8447a8938b700f4; gates passed on head 15162142223cdb3311cca7ff14e4c33fc3a6c284 in CI run 37103901718; prior exact checkpoint recorded 36 deterministic tests and disposable adopter install/check. ACS runtime readiness remains unclaimed."],"next_action":"Publish exact post-merge receipt to leaf #18 and link parent #17; continue governance research on #17.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0005","timestamp":"2026-10-03T07:54:33Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"250d1ad2e6e33a08afbc71f136b6d2606020edca7d1dbf371126ccf860b98ca8","request_id":"f302324d551845eba633baf7e2531e71","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0005"} -->
+
+Completed:
+- Record OIO-0005 as delivered after PR #19 merged and CI gates passed.
+
+Evidence:
+- PR #19 merged at e965d36b768063a3a8f3c4c5e8447a8938b700f4; gates passed on head 15162142223cdb3311cca7ff14e4c33fc3a6c284 in CI run 37103901718; prior exact checkpoint recorded 36 deterministic tests and disposable adopter install/check. ACS runtime readiness remains unclaimed.
+
+Decisions:
+- Installer is ready for explicitly targeted adopters; ACS HOTLOAD remains reference-only without runtime certification.
+
+Changed:
+- CURRENT and OIO-0005 task projection reflect merged delivery.
+
+Blocked/uncertain:
+- none
+
+Next:
+- Publish exact post-merge receipt to leaf #18 and link parent #17; continue governance research on #17.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Verify the live issue before resuming. Checkpoint before stopping.
