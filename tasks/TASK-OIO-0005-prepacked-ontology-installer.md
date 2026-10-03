@@ -90,6 +90,29 @@ Blocked/uncertain:
 Next:
 - Publish this checkpoint receipt to leaf #18 and parent #17, then await human direction on PR delivery.
 
+### 2026-10-03 06:39:44 UTC — Codex
+
+<!-- continuity:checkpoint {"agent":"Codex","blocked":[],"changed":["Installer secure filesystem layer; triage record priority; issue-record schema/tests; ontology/install guidance; task and CURRENT projections."],"completed":["Addressed the Luna review findings: unresolved priority no longer serializes as top priority, and installer/recovery writes use no-follow descriptor-relative operations with regression coverage for managed-directory relocation/symlink swaps."],"decisions":["Only OIO was changed. The installer fails closed for swaps detected at verification points; it does not claim immunity to hostile same-user races. ACS HOTLOAD remains reference-only."],"evidence":["36 unit tests passed, including outside-target symlink-swap tests for install/recovery and schema checks proving unresolved priority cannot be marked resolved. YAML, JSON Schemas, PCM continuity/preflight, pinned CGM 0.5.12 adapter, train manifest, Python compilation, secret scan, and diff checks pass. Three Luna subagents independently reviewed; governance and installer reviewers confirmed fixes with the documented same-user race limit."],"next_action":"Verify GitHub gates on the new PR head, publish the new exact checkpoint receipt to leaf #18 and parent #17, then await human review/delivery direction.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0005","timestamp":"2026-10-03T06:39:44Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"2eb0cf12e9e566978eeab34a8acf62f49629de949f7cdba14d4ffd9707c8dba8","request_id":"86990c1570ff4dc4a5ea29ac18004d78","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0005"} -->
+
+Completed:
+- Addressed the Luna review findings: unresolved priority no longer serializes as top priority, and installer/recovery writes use no-follow descriptor-relative operations with regression coverage for managed-directory relocation/symlink swaps.
+
+Evidence:
+- 36 unit tests passed, including outside-target symlink-swap tests for install/recovery and schema checks proving unresolved priority cannot be marked resolved. YAML, JSON Schemas, PCM continuity/preflight, pinned CGM 0.5.12 adapter, train manifest, Python compilation, secret scan, and diff checks pass. Three Luna subagents independently reviewed; governance and installer reviewers confirmed fixes with the documented same-user race limit.
+
+Decisions:
+- Only OIO was changed. The installer fails closed for swaps detected at verification points; it does not claim immunity to hostile same-user races. ACS HOTLOAD remains reference-only.
+
+Changed:
+- Installer secure filesystem layer; triage record priority; issue-record schema/tests; ontology/install guidance; task and CURRENT projections.
+
+Blocked/uncertain:
+- none
+
+Next:
+- Verify GitHub gates on the new PR head, publish the new exact checkpoint receipt to leaf #18 and parent #17, then await human review/delivery direction.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Verify the live issue before resuming. Checkpoint before stopping.
