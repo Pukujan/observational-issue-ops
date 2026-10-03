@@ -10,8 +10,8 @@ import json
 import os
 import re
 import subprocess
+import stat
 import sys
-import tempfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
 
@@ -67,32 +67,145 @@ def _source_file(relative: str) -> Path:
     return DATA_ROOT / relative
 
 
-def _atomic_write(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(prefix=".oio-tmp-", dir=path.parent)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(data)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp_name, path)
-    finally:
-        if os.path.exists(temp_name):
-            os.unlink(temp_name)
+def _after_parent_open(target: Path, relative: str) -> None:
+    """Test hook for exercising path swaps after secure directory traversal."""
 
 
-def _recover_transaction(target: Path) -> None:
-    journal_path = _target_file(target, JOURNAL_REL)
-    if not journal_path.exists():
+class _TargetFS:
+    """Descriptor-relative access that refuses symlinks at managed path components."""
+
+    def __init__(self, root: Path):
+        required = {os.open, os.mkdir, os.stat, os.unlink, os.rename}
+        if not required.issubset(os.supports_dir_fd) or not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+            raise InstallError("this platform lacks descriptor-relative no-follow filesystem operations")
+        self.root = root
+        self.root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+
+    def close(self) -> None:
+        if self.root_fd is not None:
+            os.close(self.root_fd)
+            self.root_fd = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.close()
+
+    def _parent(self, relative: str, *, create: bool = False) -> tuple[int, str]:
+        pure = PurePosixPath(relative)
+        if pure.is_absolute() or ".." in pure.parts or not pure.parts:
+            raise InstallError(f"unsafe package path: {relative!r}")
+        current_fd = os.dup(self.root_fd)
+        try:
+            for part in pure.parts[:-1]:
+                flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+                try:
+                    next_fd = os.open(part, flags, dir_fd=current_fd)
+                except FileNotFoundError:
+                    if not create:
+                        raise
+                    try:
+                        os.mkdir(part, mode=0o755, dir_fd=current_fd)
+                    except FileExistsError:
+                        pass
+                    next_fd = os.open(part, flags, dir_fd=current_fd)
+                os.close(current_fd)
+                current_fd = next_fd
+            return current_fd, pure.parts[-1]
+        except Exception:
+            os.close(current_fd)
+            raise
+
+    def read_bytes(self, relative: str) -> bytes | None:
+        try:
+            parent_fd, leaf = self._parent(relative)
+        except FileNotFoundError:
+            return None
+        try:
+            fd = os.open(leaf, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent_fd)
+        except FileNotFoundError:
+            os.close(parent_fd)
+            return None
+        except OSError:
+            os.close(parent_fd)
+            raise
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                raise InstallError(f"managed target path is not a regular file: {relative}")
+            with os.fdopen(fd, "rb") as handle:
+                fd = -1
+                return handle.read()
+        finally:
+            if fd >= 0:
+                os.close(fd)
+            os.close(parent_fd)
+
+    def _verify_parent(self, relative: str, opened_fd: int) -> None:
+        current_fd, _ = self._parent(relative)
+        try:
+            opened = os.fstat(opened_fd)
+            current = os.fstat(current_fd)
+            if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino):
+                raise InstallError(f"managed target path changed during installation: {relative}")
+        finally:
+            os.close(current_fd)
+
+    def atomic_write(self, relative: str, data: bytes) -> None:
+        parent_fd, leaf = self._parent(relative, create=True)
+        temp_name = f".oio-tmp-{os.getpid()}-{os.urandom(8).hex()}"
+        temp_fd = -1
+        try:
+            _after_parent_open(self.root, relative)
+            self._verify_parent(relative, parent_fd)
+            temp_fd = os.open(temp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=parent_fd)
+            with os.fdopen(temp_fd, "wb") as handle:
+                temp_fd = -1
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+            try:
+                info = os.stat(leaf, dir_fd=parent_fd, follow_symlinks=False)
+                if stat.S_ISLNK(info.st_mode):
+                    raise InstallError(f"refusing symlink in managed target path: {relative}")
+                if not stat.S_ISREG(info.st_mode):
+                    raise InstallError(f"managed target path is not a regular file: {relative}")
+            except FileNotFoundError:
+                pass
+            self._verify_parent(relative, parent_fd)
+            os.rename(temp_name, leaf, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+            os.fsync(parent_fd)
+        finally:
+            if temp_fd >= 0:
+                os.close(temp_fd)
+            try:
+                os.unlink(temp_name, dir_fd=parent_fd)
+            except FileNotFoundError:
+                pass
+            os.close(parent_fd)
+
+    def unlink(self, relative: str) -> None:
+        parent_fd, leaf = self._parent(relative)
+        try:
+            self._verify_parent(relative, parent_fd)
+            os.unlink(leaf, dir_fd=parent_fd)
+            os.fsync(parent_fd)
+        finally:
+            os.close(parent_fd)
+
+
+def _recover_transaction(target: Path, target_fs: _TargetFS) -> None:
+    journal_bytes = target_fs.read_bytes(JOURNAL_REL)
+    if journal_bytes is None:
         return
     try:
-        journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        journal = json.loads(journal_bytes.decode("utf-8"))
         if journal.get("schema_version") != "oio.installer-transaction.v1" or set(journal) != {"schema_version", "entries"}:
             raise InstallError("unsupported install recovery journal; preserve it and contact the OIO maintainer")
         entries = journal["entries"]
         if not isinstance(entries, dict) or not set(entries).issubset(RECOVERY_ALLOWED):
             raise InstallError("install recovery journal contains paths outside the OIO-managed allow-list")
-        restore_actions: list[tuple[Path, bytes | None]] = []
+        restore_actions: list[tuple[str, bytes | None]] = []
         for relative, entry in entries.items():
             path = _target_file(target, relative)
             if not isinstance(entry, dict) or set(entry) != {"before", "planned_sha256"}:
@@ -101,20 +214,21 @@ def _recover_transaction(target: Path) -> None:
             planned_hash = entry["planned_sha256"]
             if not (before is None or isinstance(before, str)) or not isinstance(planned_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", planned_hash):
                 raise InstallError(f"invalid recovery journal hashes for {relative}")
-            current_hash = _sha256(path.read_bytes()) if path.exists() else None
+            current_data = target_fs.read_bytes(relative)
+            current_hash = _sha256(current_data) if current_data is not None else None
             before_bytes = base64.b64decode(before, validate=True) if before is not None else None
             before_hash = _sha256(before_bytes) if before_bytes is not None else None
             if current_hash == before_hash:
                 continue
             if current_hash != planned_hash:
                 raise InstallError(f"recovery conflict at {relative}; current file differs from both saved and planned transaction data")
-            restore_actions.append((path, before_bytes))
-        for path, before_bytes in restore_actions:
+            restore_actions.append((relative, before_bytes))
+        for relative, before_bytes in restore_actions:
             if before_bytes is None:
-                path.unlink()
+                target_fs.unlink(relative)
             else:
-                _atomic_write(path, before_bytes)
-        journal_path.unlink()
+                target_fs.atomic_write(relative, before_bytes)
+        target_fs.unlink(JOURNAL_REL)
     except (OSError, KeyError, ValueError, json.JSONDecodeError) as exc:
         raise InstallError(f"could not safely recover interrupted installation: {exc}") from exc
 
@@ -273,12 +387,13 @@ def _managed_agents(existing: str | None, old_hash: str | None) -> tuple[str, st
     return result, _sha256(new_block.encode())
 
 
-def _read_manifest(target: Path) -> dict | None:
+def _read_manifest(target: Path, target_fs: _TargetFS | None = None) -> dict | None:
     path = _target_file(target, MANIFEST_REL)
-    if not path.exists():
+    data = target_fs.read_bytes(MANIFEST_REL) if target_fs else (path.read_bytes() if path.exists() else None)
+    if data is None:
         return None
     try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
+        manifest = json.loads(data.decode("utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise InstallError(f"invalid install manifest: {exc}") from exc
     if manifest.get("schema_version") != "oio.install-manifest.v1":
@@ -286,12 +401,12 @@ def _read_manifest(target: Path) -> dict | None:
     return manifest
 
 
-def _current_project_file(target: Path, project_id: str, namespace: str, default: dict) -> tuple[Path, bytes | None]:
+def _current_project_file(target: Path, project_id: str, namespace: str, default: dict, target_fs: _TargetFS | None = None) -> tuple[Path, bytes | None]:
     relative = ".oio/ontology/project.json"
     path = _target_file(target, relative)
-    if path.exists():
+    data = target_fs.read_bytes(relative) if target_fs else (path.read_bytes() if path.exists() else None)
+    if data is not None:
         try:
-            data = path.read_bytes()
             value = json.loads(data)
         except (OSError, json.JSONDecodeError) as exc:
             raise InstallError(f"existing project ontology is invalid JSON: {exc}") from exc
@@ -313,11 +428,21 @@ def install(target_arg: str, project_id: str | None = None, check_only: bool = F
     target = _safe_target(target_arg)
     if target == SOURCE_ROOT and not (check_only and SOURCE_IS_ADOPTER):
         raise InstallError("the OIO source repository is not an adopter target")
+    try:
+        target_fs_context = _TargetFS(target)
+    except OSError as exc:
+        raise InstallError(f"could not safely open target repository: {exc}") from exc
+    with target_fs_context as target_fs:
+        return _install_in_target(target, target_fs, project_id, check_only)
+
+
+def _install_in_target(target: Path, target_fs: _TargetFS, project_id: str | None, check_only: bool) -> list[str]:
     journal_path = _target_file(target, JOURNAL_REL)
-    if journal_path.exists():
+    journal_bytes = target_fs.read_bytes(JOURNAL_REL)
+    if journal_bytes is not None:
         if check_only:
             raise InstallError("an interrupted install needs recovery; run the installer to restore its previous state first")
-        _recover_transaction(target)
+        _recover_transaction(target, target_fs)
     project_id = project_id or _repo_from_remote(target)
     if not re.fullmatch(r"[^/\s]+/[^/\s]+", project_id):
         raise InstallError("--project-id must be OWNER/REPOSITORY")
@@ -325,12 +450,12 @@ def install(target_arg: str, project_id: str | None = None, check_only: bool = F
     namespace = re.sub(r"-+", "-", namespace)[:63]
     if not re.fullmatch(r"[a-z][a-z0-9-]{1,62}", namespace):
         namespace = ("project-" + namespace)[:63]
-    manifest = _read_manifest(target)
+    manifest = _read_manifest(target, target_fs)
     old_files = manifest.get("managed_files", {}) if manifest else {}
 
     default = json.loads((DATA_ROOT / "ontology/default.json").read_text(encoding="utf-8"))
     _schema_validate(default, DATA_ROOT / "schemas/v1/default-ontology.schema.json")
-    project_path, project_new = _current_project_file(target, project_id, namespace, default)
+    project_path, project_new = _current_project_file(target, project_id, namespace, default, target_fs)
     if check_only and project_new is not None:
         raise InstallError("installed project ontology is missing; run the installer to recover the scaffold")
     planned: dict[str, bytes] = {}
@@ -339,13 +464,15 @@ def install(target_arg: str, project_id: str | None = None, check_only: bool = F
         source = _source_file(source_relative)
         planned[relative] = source.read_bytes()
         if manifest and relative in old_files:
-            if not destination.exists() or _sha256(destination.read_bytes()) != old_files[relative]:
+            installed_data = target_fs.read_bytes(relative)
+            if installed_data is None or _sha256(installed_data) != old_files[relative]:
                 raise InstallError(f"managed file changed since OIO installed it: {relative}")
-        elif destination.exists():
+        elif target_fs.read_bytes(relative) is not None:
             raise InstallError(f"unmanaged file already exists at {relative}; refusing to adopt or overwrite it")
 
     agents_path = _target_file(target, "AGENTS.md")
-    agents_existing = agents_path.read_text(encoding="utf-8") if agents_path.exists() else None
+    agents_bytes = target_fs.read_bytes("AGENTS.md")
+    agents_existing = agents_bytes.decode("utf-8") if agents_bytes is not None else None
     old_agents_hash = manifest.get("agents_block_sha256") if manifest else None
     agents_content, agents_hash = _managed_agents(agents_existing, old_agents_hash)
     planned["AGENTS.md"] = agents_content.encode("utf-8")
@@ -369,7 +496,7 @@ def install(target_arg: str, project_id: str | None = None, check_only: bool = F
     if check_only:
         if not manifest:
             raise InstallError("OIO is not installed in this repository")
-        if manifest.get("oio_version") != OIO_VERSION or any(_target_file(target, path).read_bytes() != data for path, data in planned.items() if path != ".oio/ontology/project.json"):
+        if manifest.get("oio_version") != OIO_VERSION or any(target_fs.read_bytes(path) != data for path, data in planned.items() if path != ".oio/ontology/project.json"):
             raise InstallError("installed OIO files differ from this pinned package; run the installer to update")
         return ["VALID: OIO package, project ontology, and managed files match"]
 
@@ -377,21 +504,20 @@ def install(target_arg: str, project_id: str | None = None, check_only: bool = F
     # restores these bytes if the process is interrupted at any point.
     entries: dict[str, dict[str, str | None]] = {}
     for relative in planned:
-        path = _target_file(target, relative)
-        before = base64.b64encode(path.read_bytes()).decode("ascii") if path.exists() else None
+        before_bytes = target_fs.read_bytes(relative)
+        before = base64.b64encode(before_bytes).decode("ascii") if before_bytes is not None else None
         entries[relative] = {"before": before, "planned_sha256": _sha256(planned[relative])}
-    _atomic_write(journal_path, (json.dumps({"schema_version": "oio.installer-transaction.v1", "entries": entries}, sort_keys=True) + "\n").encode())
+    target_fs.atomic_write(JOURNAL_REL, (json.dumps({"schema_version": "oio.installer-transaction.v1", "entries": entries}, sort_keys=True) + "\n").encode())
     try:
         ordered = [relative for relative in planned if relative != MANIFEST_REL] + [MANIFEST_REL]
         for index, relative in enumerate(ordered):
-            path = _target_file(target, relative)
-            _atomic_write(path, planned[relative])
+            target_fs.atomic_write(relative, planned[relative])
             if os.environ.get("OIO_INSTALL_TEST_INTERRUPT_AFTER") == str(index + 1):
                 raise SystemExit("simulated process interruption for recovery test")
     except Exception:
-        _recover_transaction(target)
+        _recover_transaction(target, target_fs)
         raise
-    journal_path.unlink()
+    target_fs.unlink(JOURNAL_REL)
     return [f"Installed OIO {OIO_VERSION} for {project_id} in {target}", "Default project priority paths 1–100 are available; replace their generic definitions with project meanings and maintain the owner account map before relying on authority-ranked triage."]
 
 
@@ -404,7 +530,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         for line in install(args.target, args.project_id, args.check):
             print(line)
-    except InstallError as exc:
+    except (InstallError, OSError) as exc:
         print(f"OIO install refused: {exc}", file=sys.stderr)
         return 2
     return 0

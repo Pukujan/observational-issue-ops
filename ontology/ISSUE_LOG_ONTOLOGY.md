@@ -29,7 +29,7 @@ Permission to file, queue order, permission to implement, and release readiness 
 
 ## Queue order and risk-versus-product review
 
-The review queue compares **source class first**, then the directing/authenticated account's owner-maintained authority (`owner`, approved collaborator, community, unknown), then the adopter's project priority path using numeric components. Human-direct and human-via-agent ranks require the separate GitHub account attestation above; a body field claiming `verified` never raises the class. Agent-proposed is class 3; agent-initiated is class 4. The project priority path is meaningful only inside the project that defined it.
+The review queue compares **source class first**, then the directing/authenticated account's owner-maintained authority (`owner`, approved collaborator, community, unknown), then the adopter's project priority path using numeric components. A review lane breaks ties only after those queue dimensions, so urgency does not silently override source class, account authority, or project priority. Human-direct and human-via-agent ranks require the separate GitHub account attestation above; a body field claiming `verified` never raises the class. Agent-proposed is class 3; agent-initiated is class 4. The project priority path is meaningful only inside the project that defined it.
 
 Risk and speed to product outcome are a parallel review lane, never a rewrite of source authority. Use the following decision matrix as an explanation guide; complete the evidence dimensions before assigning a lane.
 
@@ -49,7 +49,7 @@ Fresh installs prefill project priority paths `1`–`100` with generic definitio
 
 An adopter defines what its priority paths mean. The default supports roots `1` through `100` and hierarchical subdivisions such as `1.1`, `1.2`, `1.10`, and deeper paths. Paths are strings made of positive integer components, not decimals. Compare each component numerically from left to right; a parent path precedes its child. Lower paths are earlier only within that adopter's declared ordering.
 
-Each issue records its project/repository, exact priority path, matching project concept, and ontology version. Every used path must have a definition in the project extension; child paths also require declared parent paths. A parent path may be assigned directly when it has a definition, meaning the issue is ranked at that broader category without selecting a more specific child. There is no fixed subdivision depth. Do not compare `1.2` in one project directly with `1.2` in another unless an explicit crosswalk defines that comparison. Do not convert the path to a floating-point number: `1.10` must remain distinct from `1.1`.
+Each valid ranked issue record stores its project/repository, exact priority path, matching project concept, and ontology version. Every used path must have a definition in the project extension; child paths also require declared parent paths. A parent path may be assigned directly when it has a definition, meaning the issue is ranked at that broader category without selecting a more specific child. If the path or concept is missing or mismatched, the record is explicitly `unresolved` with null path and concept ID; downstream queues must not invent a default rank. There is no fixed subdivision depth. Do not compare `1.2` in one project directly with `1.2` in another unless an explicit crosswalk defines that comparison. Do not convert the path to a floating-point number: `1.10` must remain distinct from `1.1`.
 
 ## Impact, risk, and shipping relevance
 

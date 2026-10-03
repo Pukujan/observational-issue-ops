@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / ".github/scripts"))
 
 import oio_installer  # noqa: E402
-from oio_installer import InstallError, install, priority_key, validate_project_ontology  # noqa: E402
+from oio_installer import InstallError, _TargetFS, _recover_transaction, install, priority_key, validate_project_ontology  # noqa: E402
 from oio_triage import _resolve_attestation, classify_issue, priority_label  # noqa: E402
 
 
@@ -155,6 +155,62 @@ class InstallerTests(unittest.TestCase):
                     install(str(self.target))
                 self.assertEqual({str(p): p.read_bytes() for p in outside.rglob("*") if p.is_file()}, outside_before)
                 path.unlink()
+
+    def test_directory_swap_to_symlink_during_install_cannot_redirect_write(self):
+        target = self.target
+        managed_parent = target / ".oio/ontology"
+        managed_parent.mkdir(parents=True)
+        outside = Path(self.temp.name) / "race-outside"
+        outside.mkdir()
+        sentinel = outside / "default.json"
+        sentinel.write_text("outside sentinel")
+        moved = outside / "ontology-opened"
+
+        def swap_after_open(root, relative):
+            if relative == ".oio/ontology/default.json":
+                managed_parent.rename(moved)
+                managed_parent.symlink_to(outside, target_is_directory=True)
+
+        with mock.patch("oio_installer._after_parent_open", side_effect=swap_after_open):
+            with _TargetFS(target) as target_fs, self.assertRaises((InstallError, OSError)):
+                target_fs.atomic_write(".oio/ontology/default.json", b"attacker-controlled target")
+        self.assertEqual(sentinel.read_text(), "outside sentinel")
+        self.assertEqual(list(moved.iterdir()), [])
+
+    def test_directory_swap_to_symlink_during_recovery_cannot_redirect_write(self):
+        target = self.target
+        managed_parent = target / ".oio/ontology"
+        managed_parent.mkdir(parents=True)
+        outside = Path(self.temp.name) / "recovery-outside"
+        outside.mkdir()
+        sentinel = outside / "default.json"
+        sentinel.write_text("outside sentinel")
+        managed_file = managed_parent / "default.json"
+        planned = b"installed bytes"
+        managed_file.write_bytes(planned)
+        journal = target / ".oio/.installer-transaction.json"
+        journal.write_text(json.dumps({
+            "schema_version": "oio.installer-transaction.v1",
+            "entries": {
+                ".oio/ontology/default.json": {
+                    "before": __import__("base64").b64encode(b"previous bytes").decode(),
+                    "planned_sha256": __import__("hashlib").sha256(planned).hexdigest(),
+                }
+            },
+        }))
+        moved = outside / "ontology-opened"
+
+        def swap_after_open(root, relative):
+            if relative == ".oio/ontology/default.json":
+                managed_parent.rename(moved)
+                managed_parent.symlink_to(outside, target_is_directory=True)
+
+        with mock.patch("oio_installer._after_parent_open", side_effect=swap_after_open):
+            with _TargetFS(target) as target_fs, self.assertRaises((InstallError, OSError)):
+                _recover_transaction(target, target_fs)
+        self.assertEqual(sentinel.read_text(), "outside sentinel")
+        self.assertEqual((moved / "default.json").read_bytes(), planned)
+        self.assertTrue(journal.exists(), "recovery journal stays for a safe retry after path tampering")
 
     def test_interrupted_install_recovers_before_retry(self):
         before = self.tree()
@@ -311,6 +367,18 @@ Correct the filing and check classification.
         decision = classify_issue(self.make_issue(path="6", concept="oio-project:priority-6"), ROOT)
         self.assertIn("needs-priority-definition", decision["labels"])
         self.assertNotIn("priority:6", decision["labels"])
+        self.assertEqual(decision["record"]["priority"], {"status": "unresolved", "path": None, "concept_id": None})
+
+    def test_record_schema_forbids_resolved_priority_without_rank(self):
+        from jsonschema import Draft202012Validator
+
+        schema = json.loads((ROOT / "schemas/v1/issue-log-record.schema.json").read_text())
+        decision = classify_issue(self.make_issue(path="6", concept="oio-project:priority-6"), ROOT)
+        Draft202012Validator(schema).validate(decision["record"])
+        invalid = json.loads(json.dumps(decision["record"]))
+        invalid["priority"]["status"] = "resolved"
+        with self.assertRaises(Exception):
+            Draft202012Validator(schema).validate(invalid)
 
     def test_human_via_agent_needs_authenticated_directing_account(self):
         verified = classify_issue(self.make_issue(origin="human-via-agent", auth_state="verified", director_id="137629468"), ROOT)

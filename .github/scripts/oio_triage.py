@@ -246,7 +246,11 @@ def classify_issue(issue: dict, root: Path, repository_id: str | None = None, ev
             "session_reference": session_value or None,
             "destination_repository": destination or required_repository,
         },
-        "priority": {"path": path or "1", "concept_id": concept_id or "unresolved"},
+        "priority": {
+            "status": "resolved" if priority else "unresolved",
+            "path": path if priority else None,
+            "concept_id": concept_id if priority else None,
+        },
         "impact": {
             "affected": [norm.get("affectedapp,adopter,users,orsystems", "unknown")],
             "consequence": norm.get("observedconsequenceandworkaround", "unknown"),

@@ -129,19 +129,86 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "status",
         "path",
         "concept_id"
       ],
       "properties": {
+        "status": {
+          "enum": [
+            "resolved",
+            "unresolved"
+          ]
+        },
         "path": {
-          "type": "string",
-          "pattern": "^(?:[1-9]|[1-9][0-9]|100)(?:\\.[1-9][0-9]*)*$"
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:[1-9]|[1-9][0-9]|100)(?:\\.[1-9][0-9]*)*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "concept_id": {
-          "type": "string",
-          "minLength": 1
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "resolved"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "concept_id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unresolved"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "null"
+              },
+              "concept_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "impact": {
       "type": "object",
