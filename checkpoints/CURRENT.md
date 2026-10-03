@@ -17,7 +17,7 @@ Phase: OIO is building a prepacked observational/operational issue ontology and 
 
 ## Active
 
-- OIO-0005, leaf issue [#18](https://github.com/Pukujan/observational-issue-ops/issues/18), parent [#17](https://github.com/Pukujan/observational-issue-ops/issues/17), dependencies: none. Branch `task/OIO-0005-default-ontology-installer`; open PR [#19](https://github.com/Pukujan/observational-issue-ops/pull/19). Prior PR head `d1981d0` passed GitHub `gates` before the latest review fixes. Current local changes make unresolved priorities explicitly unranked and harden installer writes/recovery against managed-path symlink swaps; 36 tests and local validators pass. These fixes are not yet pushed or covered by GitHub checks. Awaiting push/checks and human review.
+- OIO-0005, leaf issue [#18](https://github.com/Pukujan/observational-issue-ops/issues/18), parent [#17](https://github.com/Pukujan/observational-issue-ops/issues/17), dependencies: none. Branch `task/OIO-0005-default-ontology-installer`; open PR [#19](https://github.com/Pukujan/observational-issue-ops/pull/19). The unresolved-priority and descriptor-relative installer fixes are pushed at `79a07499c52a18d5e64b8701f9ad9e67a9688003`; all 36 tests and local validators pass, and the refreshed GitHub `gates` check passed on this head. Three Luna subagents reviewed independently and their concrete findings were fixed. Awaiting receipt publication and human review/delivery direction.
 
 ## Queued
 
@@ -30,4 +30,4 @@ Phase: OIO is building a prepacked observational/operational issue ontology and 
 
 ## Next atomic action
 
-Commit and push the unresolved-priority record and descriptor-relative installer hardening, update the task receipt on #18 and parent #17, then verify PR #19's refreshed gates and await human review. All 36 tests, YAML/schema checks, PCM validation/preflight, CGM adapter and train-manifest validators, Python compilation, secret scan, and diff validation pass locally. The train at `Pukujan/agent-stack-train` is still `status: proposed`; it lists CGM 0.5.12 at `6831f91…` and PCM 0.6.0 at `4e23854…` under `certified`, so record it as proposed train data rather than treating the train itself as final authority.
+Publish the latest exact checkpoint receipt to leaf #18 and parent #17, then await human review/delivery direction for PR #19. All 36 tests, YAML/schema checks, PCM validation/preflight, CGM adapter and train-manifest validators, Python compilation, secret scan, and diff validation pass locally; the refreshed GitHub `gates` check passed on `79a07499c52a18d5e64b8701f9ad9e67a9688003`. The train at `Pukujan/agent-stack-train` is still `status: proposed`; it lists CGM 0.5.12 at `6831f91…` and PCM 0.6.0 at `4e23854…` under `certified`, so record it as proposed train data rather than treating the train itself as final authority.
