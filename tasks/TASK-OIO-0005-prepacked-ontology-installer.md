@@ -113,6 +113,29 @@ Blocked/uncertain:
 Next:
 - Verify GitHub gates on the new PR head, publish the new exact checkpoint receipt to leaf #18 and parent #17, then await human review/delivery direction.
 
+### 2026-10-03 06:41:50 UTC — Codex
+
+<!-- continuity:checkpoint {"agent":"Codex","blocked":[],"changed":["CURRENT and OIO-0005 task status/checkpoint projections."],"completed":["Updated canonical OIO task projections to record the three Luna review findings, their fixes, the explicit installer threat boundary, and passing local/current PR gates."],"decisions":["Leave PR #19 open for human review. No auto-merge and no sibling-repository writes."],"evidence":["Fix commit 41928bf9469121bc53fb45c17a1477d4149ba170 is included in checkpoint 79a07499c52a18d5e64b8701f9ad9e67a9688003. GitHub gates passed at 79a07499; all 36 local tests and installer/schema/governance checks pass."],"next_action":"Verify the latest PR head's gates and post the exact checkpoint receipt to #18 and parent #17; then await human review/delivery direction.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0005","timestamp":"2026-10-03T06:41:50Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"3a96e0260a1f2bad041d3f34dbad7f9aab2e36f3bfcd50c2fc92280ceb419cfe","request_id":"80582fb8fed347d0b10939fe901fff24","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0005"} -->
+
+Completed:
+- Updated canonical OIO task projections to record the three Luna review findings, their fixes, the explicit installer threat boundary, and passing local/current PR gates.
+
+Evidence:
+- Fix commit 41928bf9469121bc53fb45c17a1477d4149ba170 is included in checkpoint 79a07499c52a18d5e64b8701f9ad9e67a9688003. GitHub gates passed at 79a07499; all 36 local tests and installer/schema/governance checks pass.
+
+Decisions:
+- Leave PR #19 open for human review. No auto-merge and no sibling-repository writes.
+
+Changed:
+- CURRENT and OIO-0005 task status/checkpoint projections.
+
+Blocked/uncertain:
+- none
+
+Next:
+- Verify the latest PR head's gates and post the exact checkpoint receipt to #18 and parent #17; then await human review/delivery direction.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Verify the live issue before resuming. Checkpoint before stopping.
