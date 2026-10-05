@@ -14,9 +14,9 @@ Observational Issue Ops is a clean adopter of the shared stack; it vendors none 
 | --- | --- |
 | **PCM** — `project-continuity-modules` (CLI 0.6.0 @ `4e23854…`) | Continuity files + `continuity` CLI, GitHub-owned progression, PR-only to `main`, required CI gates, leaf receipts. |
 | **CGM** — `content-generation-modules` (0.5.12 @ `6831f91…`, eight modules) | Narrative and style. README and product entry route through `writing-direction`; issue/PR/commit prose through `human-sounding-writing`; basenames through `human-output-naming`. The adapter is `.content-system/`. |
-| **ACS** — `agent-custom-setup`, `multi-agent-hotload` 0.1.0 from canonical source commit `3a381eba11c6262c702f5d696878c371342e859a` | The install surface that wires the three together. |
+| **ACS** — `agent-custom-setup`, `multi-agent-hotload` 0.1.0 from canonical source commit `38f8f52e8d210db3ce258bf911ebb560c6e0fe4c` | The install surface that wires the three together. |
 
-When told to load the agent hot-loader, follow the ACS [HOTLOAD.md](https://github.com/Pukujan/agent-custom-setup/blob/3a381eba11c6262c702f5d696878c371342e859a/modules/coordination/multi-agent-hotload/v0.1.0/HOTLOAD.md) install order. A two-module CGM pin or a continuity-only PCM is an incomplete install. OIO records the ACS source contract but does not claim runtime readiness until `hotload_check.py` passes with runtime assignment and coordination artifacts installed. Validate the adapter with:
+When told to load the agent hot-loader, follow the ACS [HOTLOAD.md](https://github.com/Pukujan/agent-custom-setup/blob/38f8f52e8d210db3ce258bf911ebb560c6e0fe4c/modules/coordination/multi-agent-hotload/v0.1.0/HOTLOAD.md) install order. A two-module CGM pin or a continuity-only PCM is an incomplete install. OIO records the ACS source contract but does not claim runtime readiness until `hotload_check.py` passes with runtime assignment and coordination artifacts installed. Validate the adapter with:
 
 ```bash
 python scripts/validate_content_system.py --root "$CGM_ROOT" \
@@ -51,6 +51,21 @@ OIO exists separately because the issue log used to live inside the installer. W
 | **CGM** — `content-generation-modules` | Narrative and style authority: writing routing, human-sounding writing, output naming, visual direction, image generation. | Issue governance, execution continuity, versions. |
 | **ACS** — `agent-custom-setup` | The install surface: the hot-loader and the runtime safety that wires PCM + CGM + OIO together. | Issue governance, narrative, execution continuity, versions. |
 | **`agent-stack-train`** | The proposed version manifest for stack compatibility; its current record is not a final certification. | Everything else. |
+
+## Dev root hygiene
+
+The dev root (`D:\development` on Windows, `~/development` elsewhere, or wherever `ACS_DEV_ROOT` points) holds one main checkout per repo and nothing else.
+
+- Don't create git worktrees, dependency or sibling clones, scratch folders, or caches in the dev root.
+- Put them in the ACS cache instead: `%LOCALAPPDATA%\acs\{deps,scratch,worktrees}` on Windows, `~/.cache/acs/{deps,scratch,worktrees}` on macOS and Linux. `ACS_CACHE_DIR` moves the cache.
+- Before you finish, push any real work to a branch and remove the worktrees and scratch folders you made. Never delete a checkout that has uncommitted, unpushed, or stashed work just to tidy up.
+- To check, run the pinned ACS script: `python <acs>/modules/coordination/multi-agent-hotload/v0.1.0/scripts/dev_root_check.py --dev-root <dev root>`. It prints JSON and exits non-zero when it finds anything other than main checkouts. `--clean` shows a fix and only acts with `--yes`.
+
+Paste this at session boot along with the CGM `system_block` (it comes from the ACS hotloader's `PROMPT_INJECT.md` at `38f8f52`):
+
+```
+Dev root hygiene (ACS): the dev root (ACS_DEV_ROOT; default D:\development on Windows, ~/development elsewhere) holds exactly one main checkout per repo. Never create git worktrees, dependency or sibling clones, scratch folders, or caches there. Put them under the ACS cache instead: %LOCALAPPDATA%\acs\{deps,scratch,worktrees} on Windows, ~/.cache/acs/{deps,scratch,worktrees} on macOS/Linux (ACS_CACHE_DIR overrides). Check with scripts/dev_root_check.py.
+```
 
 ## Canonical checkout
 

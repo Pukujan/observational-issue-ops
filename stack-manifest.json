@@ -20,8 +20,8 @@
     "agent-custom-setup": {
       "module": "multi-agent-hotload",
       "version": "0.1.0",
-      "commit": "3a381eba11c6262c702f5d696878c371342e859a",
-      "source": "https://github.com/Pukujan/agent-custom-setup/tree/3a381eba11c6262c702f5d696878c371342e859a/modules/coordination/multi-agent-hotload/v0.1.0",
+      "commit": "38f8f52e8d210db3ce258bf911ebb560c6e0fe4c",
+      "source": "https://github.com/Pukujan/agent-custom-setup/tree/38f8f52e8d210db3ce258bf911ebb560c6e0fe4c/modules/coordination/multi-agent-hotload/v0.1.0",
       "adoption_status": "reference-only; runtime hotload check not yet satisfied"
     }
   }

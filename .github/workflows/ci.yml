@@ -70,6 +70,12 @@ jobs:
             --manifest stack-manifest.json \
             --train /tmp/train/stack-releases.json
 
+      - name: Dev root layout (pinned ACS dev_root_check)
+        run: |
+          git clone --quiet https://github.com/Pukujan/agent-custom-setup.git "$RUNNER_TEMP/acs"
+          git -C "$RUNNER_TEMP/acs" checkout --quiet 38f8f52e8d210db3ce258bf911ebb560c6e0fe4c
+          python "$RUNNER_TEMP/acs/modules/coordination/multi-agent-hotload/v0.1.0/scripts/dev_root_check.py" --dev-root "$(dirname "$GITHUB_WORKSPACE")"
+
       - name: Issue templates and workflows parse
         run: |
           python - <<'PY'
