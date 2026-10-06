@@ -68,6 +68,29 @@ A Windows operator runs the ACS hotload and gets the OIO issue-log surface inste
 
 No checkpoints yet.
 
+### 2026-10-06 04:58:07 UTC — owner session (Windows installer port)
+
+<!-- continuity:checkpoint {"agent":"owner session (Windows installer port)","blocked":[],"changed":[".github/scripts/oio_installer.py, tests/test_oio.py, .github/workflows/ci.yml, docs/ADOPTER_INSTALL.md, tasks/TASK-OIO-0006-windows-installer.md"],"completed":["Ported OIO's installer to Windows with the anti-redirection control preserved: _TargetFS dispatches to a Windows backend that refuses symlinks, junctions, and other reparse points at every managed path component and re-verifies parent identity around each replacement."],"decisions":["Use lstat reparse-point checks plus parent-identity re-verification on Windows (ACS SPEC.md section 6's sanctioned mechanism) rather than dropping the control; POSIX dir_fd/O_NOFOLLOW path unchanged."],"evidence":["Merged as e2e30ec via PR #33 (issue #32). Windows CI job on windows-latest: Ran 36 tests, OK (15 failed before the port). ubuntu gates leg: Ran 36 tests, OK. Metamorphic check: neutering the parent-identity re-verification lets the same mid-write junction swap overwrite the outside sentinel, proving the guard is load-bearing."],"next_action":"Complete on merge; the coupled ACS platform-check change is tracked in agent-custom-setup#79.","protocol_version":"0.1.0-draft","schema":"project-continuity.checkpoint.v1","task_id":"OIO-0006","timestamp":"2026-10-06T04:58:07Z"} -->
+<!-- continuity:checkpoint-operation {"payload_sha256":"b970b1d9f7980be8dfd4100569181ffbc36d97ed5c40909239c1aee1e7c2c9db","request_id":"9ace74e8c51d41c793b337ef1900d974","schema":"project-continuity.checkpoint-operation.v1","task_id":"OIO-0006"} -->
+
+Completed:
+- Ported OIO's installer to Windows with the anti-redirection control preserved: _TargetFS dispatches to a Windows backend that refuses symlinks, junctions, and other reparse points at every managed path component and re-verifies parent identity around each replacement.
+
+Evidence:
+- Merged as e2e30ec via PR #33 (issue #32). Windows CI job on windows-latest: Ran 36 tests, OK (15 failed before the port). ubuntu gates leg: Ran 36 tests, OK. Metamorphic check: neutering the parent-identity re-verification lets the same mid-write junction swap overwrite the outside sentinel, proving the guard is load-bearing.
+
+Decisions:
+- Use lstat reparse-point checks plus parent-identity re-verification on Windows (ACS SPEC.md section 6's sanctioned mechanism) rather than dropping the control; POSIX dir_fd/O_NOFOLLOW path unchanged.
+
+Changed:
+- .github/scripts/oio_installer.py, tests/test_oio.py, .github/workflows/ci.yml, docs/ADOPTER_INSTALL.md, tasks/TASK-OIO-0006-windows-installer.md
+
+Blocked/uncertain:
+- none
+
+Next:
+- Complete on merge; the coupled ACS platform-check change is tracked in agent-custom-setup#79.
+
 ## Handoff
 
 Read PROJECT → CURRENT → this task → minimum relevant spec. Checkpoint before stopping.
