@@ -52,6 +52,37 @@ jobs:
 
 `Closes #12`, `Fixes #12`, and `Resolves #12` close the named log; `owner/repo#12` reaches another repository. `Refs #12` closes nothing. For each log the workflow closes with reason `completed`, adds `status:resolved`, removes other `status:*` labels, rewrites the body's Lifecycle Status to `resolved`, and posts one marker-guarded comment naming the pull request. An already-closed issue is not closed a second time; its lifecycle fields are still synced. Same-repository references use `github.token`; cross-repository references use `CROSS_REPO_TOKEN`, and a missing token or a 403/404 prints a warning and continues instead of failing the merge. Pass the pinned OIO ref, not a moving branch, so an adopter's close behaviour changes only when it deliberately upgrades.
 
+## Closing what merges left open, and finished parents
+
+Two cases never reach the close-on-merge workflow. A merge carried out with a workflow's own token, for example auto-merge armed by a bot, closes nothing and starts no other workflow, so the caller above never runs. And GitHub never closes a parent issue when its last sub-issue closes. The close sweep handles both on a schedule:
+
+```yaml
+# .github/workflows/close-sweep-caller.yml
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  sweep:
+    uses: Pukujan/observational-issue-ops/.github/workflows/close-sweep.yml@<pinned-ref>
+    with:
+      oio_ref: <pinned-ref>
+      apply: false
+      rollup: label
+    secrets:
+      CROSS_REPO_TOKEN: ${{ secrets.CROSS_REPO_TOKEN }}
+```
+
+The sweep reads the last 100 pull requests merged into the default branch. Each open log one of them names with `Closes`, `Fixes` or `Resolves` is settled the same way as a merge-time close, with one exception. A log reopened after that merge is left open, because reopening says the merge did not finish it. Then it looks at every open parent whose sub-issues are all closed. With `rollup: label` it adds `oio:ready-to-close` and comments once, and removes the label again if the parent gains an open sub-issue. With `rollup: close` it closes the parent like a merged log.
+
+`apply: false` only prints what the sweep would do. Start there, read the first run's log, and add `oio:keep-open` to any log or parent that must stay open. A PR that said "Closes #12 partially" still closes #12 by GitHub's rule, so it shows up here. Then set `apply: true`. The sweep never touches a log labelled `oio:keep-open`. Triage does not manage the `oio:` labels, so it leaves them alone.
+
 ## Lifecycle drift audit
 
 The same package supplies a report-only audit. Schedule it in the adopter repository:
