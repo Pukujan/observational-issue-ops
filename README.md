@@ -82,9 +82,9 @@ A merged pull request is the one transition OIO automates. The close contract re
 
 `.github/workflows/oio-status-drift.yml` is the report-only audit. It reads every issue's `status:*` label and the GitHub open/closed state, prints each contradiction, and exits non-zero when any exist. A closed log must be `resolved`, `superseded`, `obsolete`, or `wontfix`; an open log must be `open`. Logs with no status label are ignored.
 
-`.github/workflows/close-sweep.yml` catches what the merge event misses. A merge carried out with a workflow's own token closes nothing and starts no close-on-merge run, and GitHub never closes a parent when its last sub-issue closes. The sweep reads the last 100 merged pull requests and settles the open logs they name, unless a log was reopened after that merge or carries `oio:keep-open`. It labels each open parent whose sub-issues are all closed `oio:ready-to-close`, or closes it with `rollup: close`. By default it only reports.
+`.github/workflows/close-sweep.yml` catches what the merge event misses. A merge carried out with a workflow's own token closes nothing and starts no close-on-merge run, and GitHub never closes a parent when its last sub-issue closes. The sweep reads the last 100 merged pull requests and settles the open logs they name, unless a log was reopened after that merge or carries `oio:keep-open`. It labels each open parent whose sub-issues are all closed `oio:ready-to-close`, or closes it with `rollup: close`. It only reports until it is told to apply.
 
-Same-repo callers ship with OIO: `close-on-merge-caller.yml` runs on `pull_request: closed`, `status-drift-caller.yml` runs daily and on manual dispatch, and `close-sweep-caller.yml` reports daily and applies on a manual dispatch with `apply`. Adopters call the same reusable workflows from their own repository; see [docs/ADOPTER_INSTALL.md](docs/ADOPTER_INSTALL.md).
+Same-repo callers ship with OIO: `close-on-merge-caller.yml` runs on `pull_request: closed`, `status-drift-caller.yml` runs daily and on manual dispatch, and `close-sweep-caller.yml` runs daily and applies only when the repository variable `OIO_CLOSE_SWEEP_APPLY` is `true` or a manual dispatch sets `apply`. The installer adds pinned close and sweep callers to each adopter; see [docs/ADOPTER_INSTALL.md](docs/ADOPTER_INSTALL.md).
 
 ## Version and release rule
 

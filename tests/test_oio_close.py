@@ -498,7 +498,7 @@ class WorkflowContractTests(unittest.TestCase):
             {"contents": "read", "issues": "write", "pull-requests": "read"},
         )
 
-    def test_sweep_caller_runs_on_a_schedule_and_applies_only_on_dispatch(self):
+    def test_sweep_caller_runs_on_a_schedule_and_applies_only_when_told(self):
         workflow = self.workflow("close-sweep-caller.yml")
         triggers = self.triggers(workflow)
         self.assertIn("schedule", triggers)
@@ -506,7 +506,7 @@ class WorkflowContractTests(unittest.TestCase):
         job = workflow["jobs"]["sweep"]
         self.assertEqual(job["uses"], "./.github/workflows/close-sweep.yml")
         self.assertEqual(job["with"]["oio_ref"], "${{ github.event.repository.default_branch }}")
-        self.assertEqual(job["with"]["apply"], "${{ inputs.apply == true }}")
+        self.assertEqual(job["with"]["apply"], "${{ inputs.apply == true || vars.OIO_CLOSE_SWEEP_APPLY == 'true' }}")
 
 
 class InstallerVersionAndTemplateTests(unittest.TestCase):
