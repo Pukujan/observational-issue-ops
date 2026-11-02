@@ -179,6 +179,24 @@ def _matches_recorded(data: bytes, recorded_sha256: str) -> bool:
     return any(_sha256(candidate) == recorded_sha256 for candidate in candidates)
 
 
+RUNS_ON_LINE = re.compile(r"^(\s*)runs-on:\s*ubuntu-latest\s*$", re.M)
+
+
+def _runner_labels(value: str) -> list[str]:
+    """Runner labels from ``--runs-on``, e.g. ``self-hosted, org-pool``. Anything else is refused, so a label list
+    can never carry YAML of its own into a managed workflow."""
+    labels = [label.strip() for label in str(value).split(",")]
+    if len(value) > 120 or not labels or not all(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", label) for label in labels):
+        raise InstallError("runner label must be a comma-separated list of labels such as 'self-hosted, org-pool'")
+    return labels
+
+
+def _with_runner_labels(data: bytes, labels: list[str]) -> bytes:
+    """A managed workflow with its ``runs-on: ubuntu-latest`` jobs moved to the adopter's own runners."""
+    text = RUNS_ON_LINE.sub(lambda m: f"{m.group(1)}runs-on: [{', '.join(labels)}]", data.decode("utf-8"))
+    return text.encode("utf-8")
+
+
 def _source_file(relative: str) -> Path:
     if relative.startswith(".github/") or relative == "AGENTS.md":
         return SOURCE_ROOT / relative
@@ -675,7 +693,7 @@ def _read_manifest(target: Path, target_fs: _TargetFS | None = None) -> dict | N
     return manifest
 
 
-def _current_project_file(target: Path, project_id: str, namespace: str, default: dict, target_fs: _TargetFS | None = None) -> tuple[Path, bytes | None]:
+def _current_project_file(target: Path, project_id: str, namespace: str, default: dict, target_fs: _TargetFS | None = None, rename: bool = False) -> tuple[Path, bytes | None]:
     relative = ".oio/ontology/project.json"
     path = _target_file(target, relative)
     data = target_fs.read_bytes(relative) if target_fs else (path.read_bytes() if path.exists() else None)
@@ -686,7 +704,14 @@ def _current_project_file(target: Path, project_id: str, namespace: str, default
             raise InstallError(f"existing project ontology is invalid JSON: {exc}") from exc
         validate_project_ontology(value, core=default)
         if value["project_id"] != project_id:
-            raise InstallError(f"project ontology identifies {value['project_id']!r}, not target {project_id!r}")
+            if not rename:
+                raise InstallError(f"project ontology identifies {value['project_id']!r}, not target {project_id!r}")
+            # The repository moved: change only the id, in place, so the project's own priorities and edits stay as written.
+            old = json.dumps(value["project_id"], ensure_ascii=False)
+            text = data.decode("utf-8")
+            if text.count(f'"project_id": {old}') != 1:
+                raise InstallError("could not rename the project in .oio/ontology/project.json: its project_id line is not in the expected form")
+            return path, text.replace(f'"project_id": {old}', f'"project_id": {json.dumps(project_id, ensure_ascii=False)}').encode("utf-8")
         return path, None
     template = json.loads((DATA_ROOT / "ontology/project-template.json").read_text(encoding="utf-8"))
     template["project_id"] = project_id
@@ -736,7 +761,7 @@ def _existing_caller(target: Path, reusable: str) -> str | None:
     return None
 
 
-def install(target_arg: str, project_id: str | None = None, check_only: bool = False) -> list[str]:
+def install(target_arg: str, project_id: str | None = None, check_only: bool = False, runs_on: str | None = None, rename: bool = False) -> list[str]:
     target = _safe_target(target_arg)
     if target == SOURCE_ROOT and not (check_only and SOURCE_IS_ADOPTER):
         raise InstallError("the OIO source repository is not an adopter target")
@@ -745,10 +770,10 @@ def install(target_arg: str, project_id: str | None = None, check_only: bool = F
     except OSError as exc:
         raise InstallError(f"could not safely open target repository: {exc}") from exc
     with target_fs_context as target_fs:
-        return _install_in_target(target, target_fs, project_id, check_only)
+        return _install_in_target(target, target_fs, project_id, check_only, runs_on, rename)
 
 
-def _install_in_target(target: Path, target_fs: _TargetFS, project_id: str | None, check_only: bool) -> list[str]:
+def _install_in_target(target: Path, target_fs: _TargetFS, project_id: str | None, check_only: bool, runs_on: str | None = None, rename: bool = False) -> list[str]:
     journal_path = _target_file(target, JOURNAL_REL)
     journal_bytes = target_fs.read_bytes(JOURNAL_REL)
     if journal_bytes is not None:
@@ -764,10 +789,13 @@ def _install_in_target(target: Path, target_fs: _TargetFS, project_id: str | Non
         namespace = ("project-" + namespace)[:63]
     manifest = _read_manifest(target, target_fs)
     old_files = manifest.get("managed_files", {}) if manifest else {}
+    if manifest and manifest.get("namespace"):
+        namespace = manifest["namespace"]  # stable across a rename: concept ids in the project's ontology use it
+    labels = _runner_labels(runs_on) if runs_on is not None else (manifest or {}).get("runs_on")
 
     default = json.loads((DATA_ROOT / "ontology/default.json").read_text(encoding="utf-8"))
     _schema_validate(default, DATA_ROOT / "schemas/v1/default-ontology.schema.json")
-    project_path, project_new = _current_project_file(target, project_id, namespace, default, target_fs)
+    project_path, project_new = _current_project_file(target, project_id, namespace, default, target_fs, rename and not check_only)
     if check_only and project_new is not None:
         raise InstallError("installed project ontology is missing; run the installer to recover the scaffold")
     planned: dict[str, bytes] = {}
@@ -786,6 +814,10 @@ def _install_in_target(target: Path, target_fs: _TargetFS, project_id: str | Non
         elif oio_ref is None:
             raise InstallError(f"{relative} is managed, but the OIO commit it pins is unknown; run the installer from an OIO git checkout")
         planned[relative] = template.replace(OIO_REF_PLACEHOLDER, oio_ref).encode("utf-8")
+    if labels:
+        for relative in planned:
+            if relative.startswith(".github/workflows/"):
+                planned[relative] = _with_runner_labels(planned[relative], labels)
     for relative in planned:
         _target_file(target, relative)
         if manifest and relative in old_files:
@@ -818,6 +850,8 @@ def _install_in_target(target: Path, target_fs: _TargetFS, project_id: str | Non
     }
     if oio_ref is not None:
         install_manifest["oio_ref"] = oio_ref
+    if labels:
+        install_manifest["runs_on"] = labels
     planned[MANIFEST_REL] = (json.dumps(install_manifest, indent=2, ensure_ascii=False) + "\n").encode()
     _target_file(target, MANIFEST_REL)
     if check_only:
@@ -905,6 +939,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--target", help="absolute path to one existing Git target repository")
     parser.add_argument("--project-id", help="owner/repository; otherwise inferred from target origin")
     parser.add_argument("--check", action="store_true", help="validate the installed files without writing")
+    parser.add_argument("--runs-on", help="comma-separated runner labels for the managed workflows, e.g. 'self-hosted, org-pool'; recorded in the install manifest, so later checks and upgrades keep it")
+    parser.add_argument("--rename", action="store_true", help="with --project-id: the repository moved; change only the project id in the existing ontology and manifest")
     parser.add_argument(
         "--check-platform",
         action="store_true",
@@ -920,7 +956,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.target:
         parser.error("--target is required unless --check-platform is given")
     try:
-        for line in install(args.target, args.project_id, args.check):
+        for line in install(args.target, args.project_id, args.check, args.runs_on, args.rename):
             print(line)
     except (InstallError, OSError) as exc:
         print(f"OIO install refused: {exc}", file=sys.stderr)

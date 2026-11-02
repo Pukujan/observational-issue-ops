@@ -120,6 +120,61 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaisesRegex(InstallError, "project ontology is missing"):
             install(str(self.target), check_only=True)
 
+    def test_runner_label_is_applied_recorded_and_checked_without_the_flag(self):
+        install(str(self.target), runs_on="self-hosted, org-pool")
+        triage = (self.target / ".github/workflows/issue-triage.yml").read_text()
+        self.assertIn("runs-on: [self-hosted, org-pool]", triage)
+        self.assertNotIn("ubuntu-latest", triage)
+        manifest = json.loads((self.target / ".oio/install-manifest.json").read_text())
+        self.assertEqual(manifest["runs_on"], ["self-hosted", "org-pool"])
+        self.assertIn("VALID", " ".join(install(str(self.target), check_only=True)))
+        install(str(self.target))  # a plain upgrade keeps the recorded label
+        self.assertIn("runs-on: [self-hosted, org-pool]", (self.target / ".github/workflows/issue-triage.yml").read_text())
+
+    def test_default_install_keeps_ubuntu_latest_and_records_no_label(self):
+        install(str(self.target))
+        self.assertIn("runs-on: ubuntu-latest", (self.target / ".github/workflows/issue-triage.yml").read_text())
+        self.assertNotIn("runs_on", json.loads((self.target / ".oio/install-manifest.json").read_text()))
+
+    def test_runner_label_rejects_anything_that_is_not_a_label_list(self):
+        for bad in ("", "a;b", "self-hosted\nsteps:", "x" * 200, "[a]"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(InstallError, "runner label"):
+                install(str(self.target), runs_on=bad)
+        self.assertNotIn(".oio/install-manifest.json", self.tree())
+
+    def test_a_hand_edited_runner_label_is_still_refused(self):
+        install(str(self.target), runs_on="self-hosted, org-pool")
+        triage = self.target / ".github/workflows/issue-triage.yml"
+        triage.write_text(triage.read_text().replace("org-pool", "other-pool"))
+        with self.assertRaisesRegex(InstallError, "managed file changed"):
+            install(str(self.target), check_only=True)
+
+    def test_rename_moves_the_project_id_and_keeps_the_namespace_and_edits(self):
+        install(str(self.target))
+        project_file = self.target / ".oio/ontology/project.json"
+        project = json.loads(project_file.read_text())
+        namespace = project["namespace"]
+        project["priorities"][0]["label"] = "Edited by the project"
+        project_file.write_text(json.dumps(project, indent=2, ensure_ascii=False) + "\n")
+        with self.assertRaisesRegex(InstallError, "identifies"):
+            install(str(self.target), project_id="neworg/adopter")  # no --rename: still refused
+        subprocess.run(["git", "-C", str(self.target), "remote", "set-url", "origin", "https://github.com/neworg/adopter.git"], check=True)
+        install(str(self.target), project_id="neworg/adopter", rename=True)
+        renamed = json.loads(project_file.read_text())
+        self.assertEqual(renamed["project_id"], "neworg/adopter")
+        self.assertEqual(renamed["namespace"], namespace)
+        self.assertEqual(renamed["priorities"][0]["label"], "Edited by the project")
+        manifest = json.loads((self.target / ".oio/install-manifest.json").read_text())
+        self.assertEqual((manifest["project_id"], manifest["namespace"]), ("neworg/adopter", namespace))
+        self.assertIn("VALID", " ".join(install(str(self.target), check_only=True)))
+
+    def test_rename_is_refused_in_check_mode_and_for_a_malformed_id(self):
+        install(str(self.target))
+        with self.assertRaisesRegex(InstallError, "OWNER/REPOSITORY"):
+            install(str(self.target), project_id="not-a-repo", rename=True)
+        with self.assertRaisesRegex(InstallError, "identifies"):
+            install(str(self.target), project_id="neworg/adopter", rename=True, check_only=True)
+
     def test_installed_copy_can_check_its_target(self):
         install(str(self.target))
         script = self.target / ".github/scripts/oio_installer.py"
